@@ -1,0 +1,113 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "For_each": {
+                "actions": {
+                    "Condition": {
+                        "actions": {
+                            "Create_or_update_a_resource": {
+                                "inputs": {
+                                    "body": {
+                                        "location": "@items('For_each')?['location']",
+                                        "sku": {
+                                            "capacity": 10,
+                                            "name": "Standard",
+                                            "tier": "Standard"
+                                        }
+                                    },
+                                    "host": {
+                                        "connection": {
+                                            "name": "@parameters('$connections')['arm']['connectionId']"
+                                        }
+                                    },
+                                    "method": "put",
+                                    "path": "/subscriptions/@{encodeURIComponent('REPLACE')}/resourcegroups/@{encodeURIComponent(split(item()?['id'], '/')[4])}/providers/@{encodeURIComponent('Microsoft.Sql')}/@{encodeURIComponent(substring(item()?['id'], indexOf(item()?['id'], '/servers/')))}",
+                                    "queries": {
+                                        "x-ms-api-version": "2019-06-01-preview"
+                                    }
+                                },
+                                "runAfter": {},
+                                "type": "ApiConnection"
+                            }
+                        },
+                        "expression": {
+                            "and": [
+                                {
+                                    "equals": [
+                                        "@items('For_each')?['type']",
+                                        "Microsoft.Sql/servers/databases"
+                                    ]
+                                }
+                            ]
+                        },
+                        "runAfter": {},
+                        "type": "If"
+                    }
+                },
+                "foreach": "@body('List_resources_by_subscription')?['value']",
+                "runAfter": {
+                    "List_resources_by_subscription": [
+                        "Succeeded"
+                    ]
+                },
+                "type": "Foreach"
+            },
+            "List_resources_by_subscription": {
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "name": "@parameters('$connections')['arm']['connectionId']"
+                        }
+                    },
+                    "method": "get",
+                    "path": "/subscriptions/@{encodeURIComponent('REPLACE')}/resources",
+                    "queries": {
+                        "$expand": "",
+                        "$filter": "tagName eq 'SizeScheduleGroup' AND tagValue eq 'A'",
+                        "x-ms-api-version": "2016-06-01"
+                    }
+                },
+                "runAfter": {},
+                "type": "ApiConnection"
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {},
+        "parameters": {
+            "$connections": {
+                "defaultValue": {},
+                "type": "Object"
+            }
+        },
+        "triggers": {
+            "Recurrence": {
+                "recurrence": {
+                    "frequency": "Day",
+                    "interval": 1,
+                    "schedule": {
+                        "hours": [
+                            "5"
+                        ],
+                        "minutes": [
+                            30
+                        ]
+                    },
+                    "timeZone": "Pacific Standard Time"
+                },
+                "type": "Recurrence"
+            }
+        }
+    },
+    "parameters": {
+        "$connections": {
+            "value": {
+                "arm": {
+                    "connectionId": "/subscriptions/REPLACE/resourceGroups/RG-BlogSize/providers/Microsoft.Web/connections/arm",
+                    "connectionName": "arm",
+                    "id": "/subscriptions/REPLACE/providers/Microsoft.Web/locations/westus2/managedApis/arm"
+                }
+            }
+        }
+    }
+}
